@@ -4,5 +4,5 @@ This is a Telegram bot for MEXC trading
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/katejhon/Mybot.git
+git clone https://github.com/katejhon/AutoTradingBotV1.git
 cd Mybot
