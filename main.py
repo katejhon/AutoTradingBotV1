@@ -5,6 +5,7 @@ from websocket import websocket_prices
 from notifier import start
 from exchange_async import get_top_symbols
 from config import ACCOUNTS
+from report import loop as report_loop
 
 async def main():
     state = BotState()
@@ -28,7 +29,10 @@ async def main():
 
         tasks.append(loop())
 
-    await asyncio.gather(*tasks)
+    await asyncio.gather(
+    report_loop(state),  # ✅ ADD THIS BACK
+    *tasks
+)
 
 if __name__ == "__main__":
     asyncio.run(main())
