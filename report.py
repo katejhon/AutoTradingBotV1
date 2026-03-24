@@ -1,56 +1,100 @@
 import asyncio
 from exchange_async import get_all_balances, get_price
 from notifier import bot
-from config import CHAT_ID
+from config import CHAT_ID, ACCOUNTS
 from state import BotState
 
 async def report(state: BotState):
-    balances = await get_all_balances()
+    balances = await get_all_balances(ACCOUNTS[0])
+
     total_balance = 0
     data = []
 
     active_assets = set(balances.keys())
+
     for symbol in list(state.positions.keys()):
         asset = symbol.replace("USDT", "")
         if asset not in active_assets:
             del state.positions[symbol]
 
-    state.save_positions()
+    state.save()
+
+    MIN_VALUE = 0.1
 
     for asset, qty in balances.items():
-        if qty <= 0: continue
+
+        if qty <= 0:
+            continue
+
         if asset == "USDT":
             total_balance += qty
             continue
 
         symbol = asset + "USDT"
+
         try:
             price = await get_price(symbol)
             value = price * qty
+
+            if value < MIN_VALUE:
+                continue
+
             total_balance += value
+
             if symbol in state.positions:
-                entry = state.positions[symbol]['entry']
+                entry = state.positions[symbol]["entry"]
                 pnl = (price - entry) / entry * 100
             else:
                 pnl = 0
-            data.append({"symbol": symbol, "price": price, "qty": qty, "value": value, "pnl": pnl})
+
+            data.append({
+                "symbol": symbol,
+                "price": price,
+                "qty": qty,
+                "value": value,
+                "pnl": pnl
+            })
+
         except:
             continue
 
     data.sort(key=lambda x: x["pnl"], reverse=True)
-    total_pnl = sum(d["pnl"] for d in data) if data else 0
+
+    valid_assets = {
+        asset for asset, qty in balances.items()
+        if qty > 0
+    }
+
+    for symbol in list(state.positions.keys()):
+        asset = symbol.replace("USDT", "")
+        if asset not in valid_assets:
+            del state.positions[symbol]
+
+    state.save()
+
+    total_value = sum(d["value"] for d in data)
+    total_cost = sum(
+        d["value"] / (1 + d["pnl"]/100) if d["pnl"] != -100 else d["value"]
+        for d in data
+    )
+
+    total_pnl = ((total_value - total_cost) / total_cost * 100) if total_cost else 0
 
     msg = f"""📊 5-MIN REPORT
 💰 Balance: {total_balance:.2f} USDT
 📈 PNL: {total_pnl:.2f}%"""
+
     for d in data:
         msg += f"""
+
 {d['symbol']}
-Token Price: {d['price']}
+Token Price: {d['price']:.2f}
 Qty: {d['qty']}
 Value: {d['value']:.2f} USDT
 PNL: {d['pnl']:.2f}%"""
+
     await bot.send_message(chat_id=CHAT_ID, text=msg)
+
 
 async def loop(state: BotState):
     while True:
@@ -58,4 +102,5 @@ async def loop(state: BotState):
             await report(state)
         except Exception as e:
             print("Report error:", e)
-        await asyncio.sleep(300)
+
+        await asyncio.sleep(300)  # 5 minutes
