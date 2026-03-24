@@ -46,3 +46,14 @@ async def market_sell(symbol, qty, account):
     return await request("POST", "/api/v3/order", {
         "symbol": symbol, "side": "SELL", "type": "MARKET", "quantity": qty
     }, account)
+
+async def get_all_balances(account):
+    data = await request("GET", "/api/v3/account", account=account)
+
+    balances = {}
+    for b in data.get("balances", []):
+        total = float(b.get("free", 0)) + float(b.get("locked", 0))
+        if total > 0:
+            balances[b["asset"]] = total
+
+    return balances
