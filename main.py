@@ -7,6 +7,13 @@ from exchange_async import get_top_symbols
 from config import ACCOUNTS
 from report import loop as report_loop
 
+
+async def trade_loop(trader):
+    while True:
+        await asyncio.gather(*(trader.trade(s) for s in trader.symbols))
+        await asyncio.sleep(0.5)
+
+
 async def main():
     state = BotState()
     await start()
@@ -19,20 +26,15 @@ async def main():
 
     for acc in ACCOUNTS:
         trader = Trader(state, symbols, acc)
-        tasks.append(trader.monitor())
 
-        async def loop():
-            while True:
-                await asyncio.gather(*(trader.trade(s) for s in symbols))
-                
-                await asyncio.sleep(0.5)
+        tasks.append(asyncio.create_task(trader.monitor()))
 
-        tasks.append(loop())
+        tasks.append(asyncio.create_task(trade_loop(trader)))
 
-    await asyncio.gather(
-    report_loop(state),
-    *tasks
-)
+    tasks.append(asyncio.create_task(report_loop(state)))
+
+    await asyncio.gather(*tasks)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
