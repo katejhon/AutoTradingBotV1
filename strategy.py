@@ -15,7 +15,6 @@ def indicators(df):
     df['rsi'] = rsi(df['c'])
     df['vol_avg'] = df['v'].rolling(20).mean()
 
-    # momentum
     df['momentum'] = df['c'].diff()
 
     return df
@@ -80,7 +79,6 @@ def ai_signal_multi(df1, df5, df15):
     s5 = analyze_tf(df5)
     s15 = analyze_tf(df15)
 
-    # weighted system
     total = s1 + (s5 * 1.3) + (s15 * 1.6)
 
     return total >= 4
