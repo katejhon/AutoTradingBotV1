@@ -16,7 +16,7 @@ async def websocket_prices(symbols, cache):
                 for s in symbols:
                     await ws.send(json.dumps({
                         "method": "SUBSCRIPTION",
-                        "params": [f"spot@public.deals.v3.api@{s}"],
+                        "params": [f"spot@public.ticker.v3.api@{s}"],
                         "id": 1
                     }))
 
